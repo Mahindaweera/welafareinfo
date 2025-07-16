@@ -1005,9 +1005,12 @@
             tableBody.innerHTML = ''; 
 
             const sortedMembers = members.slice().sort((a, b) => {
-                if (!a.birthDate) return 1;
-                if (!b.birthDate) return -1;
-                return new Date(a.name) - new Date(b.name);
+                // Handle cases where birthDate might be null or undefined
+                if (!a.birthDate) return 1; // Move members without a birthdate to the end
+                if (!b.birthDate) return -1; // Keep members without a birthdate at the end
+
+                // Sort by birthDate in descending order (youngest to oldest)
+                return new Date(b.birthDate) - new Date(a.birthDate);
             });
 
             sortedMembers.forEach((member, index) => {
