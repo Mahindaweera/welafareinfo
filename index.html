@@ -1214,7 +1214,11 @@
 
             if (suffix === '') {
                 const updatedDate = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-                document.getElementById('footer-info').innerHTML = `<p>Sri Lankan Community Welfare • Updated: ${updatedDate}</p>`;
+                const currentYear = new Date().getFullYear();
+                document.getElementById('footer-info').innerHTML = `
+                    <p>Sri Lankan Community Welfare • Updated: ${updatedDate}</p>
+                    <p style="margin-top: 10px;">&copy; ${currentYear} Mahinda Weerasinghe</p>
+                `;
                 document.getElementById('grand-total-paid').innerHTML = formatDualCurrency(totalCollectedUSD);
             }
         }
