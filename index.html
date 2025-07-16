@@ -723,25 +723,48 @@
             </div>
         </header>
         
-        <!-- This section is for regular users -->
+        <!-- This section is for regular (non-admin) users -->
         <div id="guestView" class="hidden">
-             <div class="card">
-                <h2 class="card-title"><i class="fas fa-info-circle"></i> Welcome</h2>
-                <p>Welcome to the community welfare page. You can view key information and take a screenshot of the dashboard overview.</p>
-                 <div class="dashboard" style="grid-template-columns: 1fr;">
-                    <div class="card">
-                        <h2 class="card-title"><i class="fas fa-chart-line"></i> Contribution Overview</h2>
-                        <div class="stats-container">
-                            <div class="stat-box">
-                                <div class="stat-label">Total Members</div>
-                                <div id="total-members-value-guest" class="stat-value">0</div>
-                            </div>
-                            <div class="stat-box">
-                                <div class="stat-label">Total Collected</div>
-                                <div id="total-collected-value-guest" class="stat-value"></div>
-                            </div>
+            <div class="dashboard">
+                <div class="card">
+                    <h2 class="card-title"><i class="fas fa-chart-line"></i> Contribution Overview</h2>
+                    <div class="stats-container">
+                        <div class="stat-box">
+                            <div class="stat-label">Total Members</div>
+                            <div id="total-members-value-guest" class="stat-value">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Active Contributors</div>
+                            <div id="active-contributors-value-guest" class="stat-value">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Total Collected</div>
+                            <div id="total-collected-value-guest" class="stat-value"></div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Upcoming Birthday</div>
+                            <div id="upcoming-birthday-name-guest" class="stat-value">-</div>
+                            <div id="upcoming-birthday-date-guest" class="stat-label">-</div>
                         </div>
                     </div>
+                    <div class="qr-code-container">
+                        <h3 class="qr-title">Scan to Contribute</h3>
+                        <img src="main_qr.png" alt="Contribution QR Code" class="qr-code-image" onerror="this.style.display='none'">
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="card-title"><i class="fas fa-info-circle"></i> Key Information</h2>
+                    <div class="usd-highlight">
+                        <i class="fas fa-sync-alt"></i> <span>Amounts shown in USD and LKR</span>
+                    </div>
+                    <ul style="list-style: none; line-height: 2.2;">
+                        <li><i class="fas fa-check-circle" style="color: #4CAF50;"></i> Monthly Contribution: <span id="monthly-contribution-value-guest" class="currency"></span></li>
+                        <li><i class="fas fa-birthday-cake" style="color: #E91E63;"></i> Next Birthday: <span id="next-birthday-info-guest">-</span></li>
+                        <li><i class="fas fa-coins" style="color: #FFC107;"></i> Total Welfare Fund: <span id="total-welfare-fund-value-guest" class="currency"></span></li>
+                        <li><i class="fas fa-exclamation-triangle" style="color: #f44336;"></i> Unpaid This Month: <span id="unpaid-members-list-guest" class="currency"></span></li>
+                        <li><i class="fas fa-file-excel" style="color: #1B5E20;"></i> Last Updated: <span id="last-updated-info-guest"></span></li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -884,19 +907,17 @@
             const username = document.getElementById('loginUsername').value;
             const password = document.getElementById('loginPassword').value;
             
-            // SECURITY WARNING: Storing and checking passwords in plain text is not secure!
             const { data, error } = await sb
                 .from('users')
                 .select('username, role')
                 .eq('username', username)
                 .eq('password', password)
-                .single(); // We expect only one user
+                .single();
 
             if (error || !data) {
                 loginError.textContent = 'Invalid username or password.';
             } else {
                 loginError.textContent = '';
-                // Store user session in sessionStorage
                 sessionStorage.setItem('currentUser', JSON.stringify(data));
                 checkSession();
             }
@@ -907,8 +928,7 @@
             const username = document.getElementById('registerUsername').value;
             const password = document.getElementById('registerPassword').value;
 
-            // 1. Check if username already exists
-            const { data: existingUser, error: selectError } = await sb
+            const { data: existingUser } = await sb
                 .from('users')
                 .select('username')
                 .eq('username', username)
@@ -919,7 +939,6 @@
                 return;
             }
 
-            // 2. Insert new user
             const { error: insertError } = await sb
                 .from('users')
                 .insert([{ username, password, role: 'user' }]);
@@ -956,8 +975,7 @@
         }
 
         function switchAuthTab(formIdToShow) {
-            const tabs = document.querySelectorAll('.auth-tab');
-            tabs.forEach(tab => {
+            document.querySelectorAll('.auth-tab').forEach(tab => {
                 tab.classList.toggle('active', tab.dataset.form === formIdToShow);
             });
             loginForm.classList.toggle('hidden', formIdToShow !== 'loginForm');
@@ -1083,48 +1101,27 @@
         // --- INITIALIZATION & UI MANAGEMENT ---
 
         document.addEventListener('DOMContentLoaded', () => {
-            checkSession(); // Check for existing session on page load
+            checkSession();
             setupEventListeners();
         });
 
         async function initializeUI() {
             await updateExchangeRate();
-            await loadMembersFromSupabase(); // Load data for all views
-
-            const isAdmin = currentUser && currentUser.role === 'admin';
-            
-            if (isAdmin) {
-                adminView.classList.remove('hidden');
-                guestView.classList.add('hidden');
-            } else {
-                guestView.classList.remove('hidden');
-                adminView.classList.add('hidden');
-            }
+            await loadMembersFromSupabase();
         }
 
         function updateDisplay() {
             const isAdmin = currentUser && currentUser.role === 'admin';
             if (isAdmin) {
-                renderAdminView();
+                adminView.classList.remove('hidden');
+                guestView.classList.add('hidden');
+                updateAllStats();
+                renderTable();
             } else {
-                renderGuestView();
+                guestView.classList.remove('hidden');
+                adminView.classList.add('hidden');
+                updateAllStats('-guest');
             }
-        }
-
-        function renderAdminView() {
-            renderTable();
-            updateAllStats();
-        }
-
-        function renderGuestView() {
-            const totalMembers = members.length;
-            const totalCollectedUSD = members.reduce((sum, m) => sum + ((m.paidMonths?.length || 0) * monthlyContributionUSD), 0);
-            const totalLKR = totalCollectedUSD * exchangeRateLKR;
-
-            document.getElementById('total-members-value-guest').textContent = totalMembers;
-            document.getElementById('total-collected-value-guest').innerHTML = `
-                $${totalCollectedUSD.toLocaleString()}<br>
-                <span class="stat-value-secondary">Rs ${totalLKR.toLocaleString('en-LK', {maximumFractionDigits: 0})}</span>`;
         }
         
         function renderTable() {
@@ -1176,52 +1173,50 @@
             return cards;
         }
 
-        function updateAllStats() {
+        function updateAllStats(suffix = '') {
             const totalMembers = members.length;
             const activeContributors = members.filter(m => m.paidMonths?.length > 0).length;
             const totalCollectedUSD = members.reduce((sum, m) => sum + ((m.paidMonths?.length || 0) * monthlyContributionUSD), 0);
-            
-            document.getElementById('total-members-value').textContent = totalMembers;
-            document.getElementById('active-contributors-value').textContent = activeContributors;
-            
             const totalLKR = totalCollectedUSD * exchangeRateLKR;
-            document.getElementById('total-collected-value').innerHTML = `
-                $${totalCollectedUSD.toLocaleString()}<br>
-                <span class="stat-value-secondary">Rs ${totalLKR.toLocaleString('en-LK', {maximumFractionDigits: 0})}</span>
-            `;
-
             const { nextBirthday, unpaidNames } = findMemberStats();
             const now = new Date();
+            const updatedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+            document.getElementById('total-members-value' + suffix).textContent = totalMembers;
+            document.getElementById('active-contributors-value' + suffix).textContent = activeContributors;
+            document.getElementById('total-collected-value' + suffix).innerHTML = `$${totalCollectedUSD.toLocaleString()}<br><span class="stat-value-secondary">Rs ${totalLKR.toLocaleString('en-LK', {maximumFractionDigits: 0})}</span>`;
             
-            document.getElementById('exchange-rate-badge').innerHTML = `1 USD = ${exchangeRateLKR.toFixed(2)} LKR`;
-            document.getElementById('monthly-contribution-value').innerHTML = formatDualCurrency(monthlyContributionUSD);
-            document.getElementById('total-welfare-fund-value').innerHTML = formatDualCurrency(totalCollectedUSD);
-            
+            document.getElementById('monthly-contribution-value' + suffix).innerHTML = formatDualCurrency(monthlyContributionUSD);
+            document.getElementById('total-welfare-fund-value' + suffix).innerHTML = formatDualCurrency(totalCollectedUSD);
+            document.getElementById('unpaid-members-list' + suffix).textContent = unpaidNames.length > 0 ? unpaidNames.join(', ') : 'None';
+            document.getElementById('last-updated-info' + suffix).textContent = `Today, ${updatedTime}`;
+
+            const upcomingBirthdayNameEl = document.getElementById('upcoming-birthday-name' + suffix);
+            const upcomingBirthdayDateEl = document.getElementById('upcoming-birthday-date' + suffix);
+            const nextBirthdayInfoEl = document.getElementById('next-birthday-info' + suffix);
+
             if (nextBirthday) {
                 const birthdayString = `${nextBirthday.name} (${formatShortDate(nextBirthday.date)})`;
-                document.getElementById('upcoming-birthday-name').textContent = nextBirthday.name;
-                
+                upcomingBirthdayNameEl.textContent = nextBirthday.name;
+                nextBirthdayInfoEl.textContent = birthdayString;
+
                 if (nextBirthday.daysUntil === 0) {
-                    document.getElementById('upcoming-birthday-date').textContent = "Happy Birthday!";
-                    document.getElementById('next-birthday-info').textContent = `Happy Birthday, ${nextBirthday.name}!`;
+                    upcomingBirthdayDateEl.textContent = "Happy Birthday!";
+                    nextBirthdayInfoEl.textContent = `Happy Birthday, ${nextBirthday.name}!`;
                 } else {
-                    const daysUntil = `(${nextBirthday.daysUntil} days)`;
-                    document.getElementById('upcoming-birthday-date').textContent = `${formatShortDate(nextBirthday.date)} ${daysUntil}`;
-                    document.getElementById('next-birthday-info').textContent = birthdayString;
+                    upcomingBirthdayDateEl.textContent = `${formatShortDate(nextBirthday.date)} (${nextBirthday.daysUntil} days)`;
                 }
             } else {
-                 document.getElementById('upcoming-birthday-name').textContent = '-';
-                document.getElementById('upcoming-birthday-date').textContent = '-';
-                document.getElementById('next-birthday-info').textContent = '-';
+                upcomingBirthdayNameEl.textContent = '-';
+                upcomingBirthdayDateEl.textContent = '-';
+                nextBirthdayInfoEl.textContent = '-';
             }
 
-            document.getElementById('unpaid-members-list').textContent = unpaidNames.length > 0 ? unpaidNames.join(', ') : 'None';
-            const updatedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-            document.getElementById('last-updated-info').textContent = `Today, ${updatedTime}`;
-            const updatedDate = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-            document.getElementById('footer-info').innerHTML = `<p>Sri Lankan Community Welfare • Updated: ${updatedDate}</p>`;
-            
-            document.getElementById('grand-total-paid').innerHTML = formatDualCurrency(totalCollectedUSD);
+            if (suffix === '') {
+                const updatedDate = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                document.getElementById('footer-info').innerHTML = `<p>Sri Lankan Community Welfare • Updated: ${updatedDate}</p>`;
+                document.getElementById('grand-total-paid').innerHTML = formatDualCurrency(totalCollectedUSD);
+            }
         }
 
         function findMemberStats() {
@@ -1269,7 +1264,6 @@
                 tab.addEventListener('click', () => switchAuthTab(tab.dataset.form));
             });
 
-            // Admin-only event listeners
             const tableBody = document.getElementById('contribution-table-body');
             tableBody.addEventListener('click', function(e) {
                 const summaryRow = e.target.closest('.summary-row');
