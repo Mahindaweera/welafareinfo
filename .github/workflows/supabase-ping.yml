@@ -3,6 +3,7 @@ name: Ping Supabase to Prevent Sleep
 on:
   schedule:
     - cron: '*/15 * * * *'   # Every 15 minutes
+  workflow_dispatch:   # Allows manual trigger
 
 jobs:
   ping-supabase:
