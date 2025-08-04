@@ -1,0 +1,14 @@
+name: Ping Supabase to Prevent Sleep
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'   # Every 15 minutes
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl Supabase Health Check
+        run: |
+          curl -sSf "https://ivnolqwgjbaxkhhgaami.supabase.co/rest/v1/users?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_API_KEY }}" || echo "Ping failed"
