@@ -3,45 +3,26 @@
 name: Supabase Health Check
 
 on:
-  # Schedule the workflow to run every 15 minutes
+  # Schedule the workflow to run once a day at midnight UTC
   schedule:
-    - cron: '*/15 * * * *' # This means: at every 15th minute, every hour, every day, every month, every day of the week.
-                          # Learn more about cron syntax: https://crontab.guru/
+    - cron: '0 0 * * *'
   # Allow manual triggering of the workflow from the GitHub Actions UI
   workflow_dispatch:
 
 jobs:
   ping-users-endpoint:
-    runs-on: ubuntu-latest # Specifies the operating system for the job
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
-        # Uses the actions/checkout action to get your repository's code.
-        # This is often necessary if your workflow depends on files in your repo,
-        # though for a simple curl command, it might not be strictly needed,
-        # but it's good practice for most workflows.
         uses: actions/checkout@v4
 
       - name: Ping Supabase Users Endpoint
-        # Define environment variables for this step.
-        # This keeps your curl command cleaner and helps manage sensitive data.
         env:
-          # Your Supabase project URL, constructed from your project ID.
           SUPABASE_URL: https://ivnolqwgqjbaxkhhgaam.supabase.co
-          # Access your API key securely from GitHub Secrets.
-          # You MUST have a secret named 'SUPABASE_API_KEY' in your repository settings.
           SUPABASE_API_KEY: ${{ secrets.SUPABASE_API_KEY }}
         run: |
-          # Print a message to the logs indicating the URL being used.
-          # DO NOT print the API key directly to logs for security reasons.
           echo "Attempting to ping Supabase at: $SUPABASE_URL/rest/v1/users?select=id&limit=1"
-
-          # Execute the curl command.
-          # -sSf: Silent, show errors, fail fast on HTTP errors.
-          # -H "apikey: ...": Sets the required API key header.
-          # || echo "Ping failed": If curl fails (returns a non-zero exit code),
-          #                        it will print "Ping failed".
           curl -sSf "$SUPABASE_URL/rest/v1/users?select=id&limit=1" \
             -H "apikey: $SUPABASE_API_KEY" || echo "Supabase ping failed!"
-
           echo "Supabase ping completed successfully."
